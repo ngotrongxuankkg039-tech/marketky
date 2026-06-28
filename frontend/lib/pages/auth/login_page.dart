@@ -147,7 +147,7 @@ class _LoginPageState extends State<LoginPage> {
                               onPressed: () => Navigator.of(
                                 context,
                               ).pushNamed(AppRoutes.register),
-                              child: const Text('没有账号？注册买家账号'),
+                              child: const Text('没有账号？注册 / 商家入驻'),
                             ),
                           ],
                         ),

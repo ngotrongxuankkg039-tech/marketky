@@ -47,6 +47,24 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
+  Future<void> registerMerchant({
+    required String name,
+    required String email,
+    required String password,
+    required String shopName,
+    required String description,
+    required String licenseNo,
+  }) async {
+    await _authenticate('/auth/merchant-register', {
+      'name': name,
+      'email': email,
+      'password': password,
+      'shopName': shopName,
+      'description': description,
+      'licenseNo': licenseNo,
+    });
+  }
+
   Future<void> useDemoRole(String role) async {
     final email = switch (role) {
       AppRoles.admin => 'admin@marketky.local',

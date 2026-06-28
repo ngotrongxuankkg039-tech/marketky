@@ -15,6 +15,7 @@ class AuthRoutes {
 
   Router get router => Router()
     ..post('/register', _register)
+    ..post('/merchant-register', _merchantRegister)
     ..post('/login', _login);
 
   Future<Response> _register(Request request) async {
@@ -45,6 +46,67 @@ class AuthRoutes {
       final userId = userResult.insertId!;
       await _grantRole(connection, userId, 'BUYER');
       await connection.query('INSERT INTO carts(user_id) VALUES (?)', [userId]);
+      return _sessionResponse(connection, userId);
+    });
+  }
+
+  Future<Response> _merchantRegister(Request request) async {
+    final body = await readJsonObject(request);
+    final name = body['name']?.toString().trim() ?? '';
+    final email = body['email']?.toString().trim().toLowerCase() ?? '';
+    final password = body['password']?.toString() ?? '';
+    final shopName = body['shopName']?.toString().trim() ?? '';
+    final description = body['description']?.toString().trim() ?? '';
+    final licenseNo = body['licenseNo']?.toString().trim() ?? '';
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.length < 8 ||
+        shopName.isEmpty ||
+        licenseNo.isEmpty) {
+      return jsonResponse({
+        'message':
+            'Name, email, password, shop name and license number are required',
+      }, statusCode: 400);
+    }
+
+    return _database.transaction((connection) async {
+      final exists = await connection.query(
+        'SELECT id FROM users WHERE email = ?',
+        [email],
+      );
+      if (exists.isNotEmpty) {
+        return jsonResponse({
+          'message': 'Email already registered',
+        }, statusCode: 409);
+      }
+      final shopExists = await connection.query(
+        '''
+        SELECT id FROM shops WHERE name = ?
+        UNION
+        SELECT id FROM merchant_applications WHERE shop_name = ? AND status = "PENDING"
+        ''',
+        [shopName, shopName],
+      );
+      if (shopExists.isNotEmpty) {
+        return jsonResponse({
+          'message': 'Shop name is already used or waiting for review',
+        }, statusCode: 409);
+      }
+
+      final userResult = await connection.query(
+        'INSERT INTO users(name, email, password_hash, status) VALUES (?, ?, ?, "ACTIVE")',
+        [name, email, PasswordHash.create(password)],
+      );
+      final userId = userResult.insertId!;
+      await _grantRole(connection, userId, 'BUYER');
+      await connection.query('INSERT INTO carts(user_id) VALUES (?)', [userId]);
+      await connection.query(
+        '''
+        INSERT INTO merchant_applications(user_id, shop_name, description, license_no, status)
+        VALUES (?, ?, ?, ?, "PENDING")
+        ''',
+        [userId, shopName, description, licenseNo],
+      );
       return _sessionResponse(connection, userId);
     });
   }

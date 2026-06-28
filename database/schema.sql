@@ -287,5 +287,6 @@ INSERT INTO categories(parent_id, name, sort_order, status) VALUES
   (NULL, '服饰', 30, 'ENABLED'),
   (NULL, '食品', 40, 'ENABLED');
 
--- Demo users can be created through POST /api/auth/register.
--- Create the first SUPER_ADMIN by inserting a bcrypt password_hash and binding roles.SUPER_ADMIN.
+-- Buyers can be created through POST /api/auth/register.
+-- Merchant applicants use POST /api/auth/merchant-register and become MERCHANT_ADMIN only after SUPER_ADMIN approval.
+-- Create the first SUPER_ADMIN by inserting a bcrypt password_hash and binding roles.SUPER_ADMIN, or run demo_seed.sql.
