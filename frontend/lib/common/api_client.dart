@@ -19,6 +19,7 @@ class ApiClient {
   final String baseUrl;
   final http.Client _client;
   String? _token;
+  Future<void> Function()? onUnauthorized;
 
   void setToken(String? token) {
     _token = token;
@@ -74,6 +75,9 @@ class ApiClient {
       final message = decoded is Map<String, dynamic>
           ? decoded['message']?.toString() ?? 'Request failed'
           : 'Request failed';
+      if (response.statusCode == 401) {
+        await onUnauthorized?.call();
+      }
       throw ApiException(message, statusCode: response.statusCode);
     }
     return decoded;

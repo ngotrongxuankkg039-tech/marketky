@@ -8,7 +8,9 @@ import '../common/app_constants.dart';
 import '../model/app_user.dart';
 
 class AuthProvider extends ChangeNotifier {
-  AuthProvider(this._apiClient);
+  AuthProvider(this._apiClient) {
+    _apiClient.onUnauthorized = expireSession;
+  }
 
   final ApiClient _apiClient;
   AppUser? user;
@@ -87,12 +89,23 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await _clearSession();
+    notifyListeners();
+  }
+
+  Future<void> expireSession() async {
+    if (token == null && user == null) return;
+    await _clearSession();
+    errorMessage = '登录已过期，请重新登录';
+    notifyListeners();
+  }
+
+  Future<void> _clearSession() async {
     token = null;
     user = null;
     _apiClient.setToken(null);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('auth_user');
-    notifyListeners();
   }
 }
