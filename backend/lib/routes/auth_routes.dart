@@ -1,4 +1,3 @@
-import 'package:mysql1/mysql1.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
@@ -75,7 +74,7 @@ class AuthRoutes {
   }
 
   Future<void> _grantRole(
-    MySqlConnection connection,
+    DbConnection connection,
     int userId,
     String roleCode,
   ) async {
@@ -94,10 +93,7 @@ class AuthRoutes {
     );
   }
 
-  Future<Response> _sessionResponse(
-    MySqlConnection connection,
-    int userId,
-  ) async {
+  Future<Response> _sessionResponse(DbConnection connection, int userId) async {
     final results = await connection.query(
       '''
       SELECT u.id, u.name, u.email, r.code AS role_code
