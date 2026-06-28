@@ -9,10 +9,27 @@ class CartProvider extends ChangeNotifier {
 
   final ApiClient _apiClient;
   final List<CartItem> items = [];
+  bool isLoading = false;
 
   double get totalAmount => items.fold(0, (sum, item) => sum + item.subtotal);
 
   int get totalQuantity => items.fold(0, (sum, item) => sum + item.quantity);
+
+  Future<void> load() async {
+    isLoading = true;
+    notifyListeners();
+    try {
+      final data = await _apiClient.get('/cart/') as List<dynamic>;
+      items
+        ..clear()
+        ..addAll(
+          data.map((item) => CartItem.fromJson(item as Map<String, dynamic>)),
+        );
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> add(Product product) async {
     final index = items.indexWhere((item) => item.product.id == product.id);
@@ -32,19 +49,29 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  void changeQuantity(Product product, int quantity) {
+  Future<void> changeQuantity(Product product, int quantity) async {
     final index = items.indexWhere((item) => item.product.id == product.id);
     if (index == -1) return;
     if (quantity <= 0) {
       items.removeAt(index);
+      await _apiClient.delete('/cart/items/${product.id}');
     } else {
       items[index] = items[index].copyWith(quantity: quantity);
+      await _apiClient.put(
+        '/cart/items/${product.id}',
+        body: {'quantity': quantity},
+      );
     }
     notifyListeners();
   }
 
-  void clear() {
+  Future<void> clear() async {
     items.clear();
     notifyListeners();
+    try {
+      await _apiClient.delete('/cart/items');
+    } catch (_) {
+      // Local state is already cleared after a successful checkout.
+    }
   }
 }

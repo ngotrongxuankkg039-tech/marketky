@@ -3,15 +3,33 @@ import 'package:provider/provider.dart';
 
 import '../../model/product.dart';
 import '../../provider/cart_provider.dart';
+import '../../provider/review_provider.dart';
 import '../../widgets/price_text.dart';
 
-class ProductDetailPage extends StatelessWidget {
+class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({super.key, required this.product});
 
   final Product product;
 
   @override
+  State<ProductDetailPage> createState() => _ProductDetailPageState();
+}
+
+class _ProductDetailPageState extends State<ProductDetailPage> {
+  Product get product => widget.product;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => context.read<ReviewProvider>().loadProductReviews(product.id),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final reviewProvider = context.watch<ReviewProvider>();
+    final reviews = reviewProvider.reviewsFor(product.id);
     return Scaffold(
       appBar: AppBar(title: Text(product.name)),
       body: ListView(
@@ -75,11 +93,24 @@ class ProductDetailPage extends StatelessWidget {
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const ListTile(
-            leading: Icon(Icons.star_rate_rounded),
-            title: Text('课程设计演示评价'),
-            subtitle: Text('后端 /reviews 接口会保存评分、文字内容和审核状态。'),
-          ),
+          if (reviewProvider.isLoading(product.id))
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (reviews.isEmpty)
+            const ListTile(
+              leading: Icon(Icons.rate_review_outlined),
+              title: Text('暂无评价'),
+              subtitle: Text('买家可在订单页提交购买评价。'),
+            )
+          else
+            for (final review in reviews)
+              ListTile(
+                leading: const Icon(Icons.star_rate_rounded),
+                title: Text('${review.userName} · ${review.rating} 星'),
+                subtitle: Text(review.content),
+              ),
         ],
       ),
     );

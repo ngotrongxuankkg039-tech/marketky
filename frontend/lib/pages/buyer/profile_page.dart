@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../provider/auth_provider.dart';
+import '../../routes/app_routes.dart';
 import '../../widgets/section_card.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -25,12 +26,18 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
           ),
-          const SectionCard(
+          SectionCard(
             title: '默认收货地址',
-            child: ListTile(
+            trailing: TextButton.icon(
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.addresses),
+              icon: const Icon(Icons.edit_location_alt_outlined),
+              label: const Text('管理'),
+            ),
+            child: const ListTile(
               leading: Icon(Icons.location_on_outlined),
-              title: Text('张三 13800000000'),
-              subtitle: Text('北京市海淀区 学院路 1 号'),
+              title: Text('默认地址由后端读取'),
+              subtitle: Text('下单时会自动使用默认收货地址'),
             ),
           ),
         ],

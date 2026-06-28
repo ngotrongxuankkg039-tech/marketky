@@ -103,3 +103,62 @@ SELECT p.id, p.stock, 'MANUAL_IN', '初始化演示库存'
 FROM products p
 WHERE p.shop_id = @shop_id
   AND NOT EXISTS (SELECT 1 FROM stock_logs sl WHERE sl.product_id = p.id);
+
+SET @address_id = (
+  SELECT id FROM addresses
+  WHERE user_id = @buyer_id
+  ORDER BY is_default DESC, id DESC
+  LIMIT 1
+);
+
+INSERT INTO orders(order_no, buyer_user_id, shop_id, address_id, status, total_amount, pay_method)
+SELECT 'DEMO-PAID-0001', @buyer_id, @shop_id, @address_id, 'PAID', 299.00, 'MOCK'
+WHERE NOT EXISTS (SELECT 1 FROM orders WHERE order_no = 'DEMO-PAID-0001');
+SET @paid_order_id = (SELECT id FROM orders WHERE order_no = 'DEMO-PAID-0001');
+
+INSERT INTO order_items(order_id, product_id, product_name, price, quantity, subtotal)
+SELECT @paid_order_id, @p1, '蓝牙降噪耳机', 299.00, 1, 299.00
+WHERE NOT EXISTS (SELECT 1 FROM order_items WHERE order_id = @paid_order_id AND product_id = @p1);
+
+INSERT INTO payments(order_id, pay_method, amount, status, paid_at)
+SELECT @paid_order_id, 'MOCK', 299.00, 'SUCCESS', NOW()
+WHERE NOT EXISTS (SELECT 1 FROM payments WHERE order_id = @paid_order_id);
+
+INSERT INTO orders(order_no, buyer_user_id, shop_id, address_id, status, total_amount, pay_method)
+SELECT 'DEMO-REFUND-0001', @buyer_id, @shop_id, @address_id, 'REFUNDING', 159.00, 'MOCK'
+WHERE NOT EXISTS (SELECT 1 FROM orders WHERE order_no = 'DEMO-REFUND-0001');
+SET @refund_order_id = (SELECT id FROM orders WHERE order_no = 'DEMO-REFUND-0001');
+
+INSERT INTO order_items(order_id, product_id, product_name, price, quantity, subtotal)
+SELECT @refund_order_id, @p3, '通勤双肩包', 159.00, 1, 159.00
+WHERE NOT EXISTS (SELECT 1 FROM order_items WHERE order_id = @refund_order_id AND product_id = @p3);
+
+INSERT INTO payments(order_id, pay_method, amount, status, paid_at)
+SELECT @refund_order_id, 'MOCK', 159.00, 'SUCCESS', NOW()
+WHERE NOT EXISTS (SELECT 1 FROM payments WHERE order_id = @refund_order_id);
+
+INSERT INTO refunds(order_id, user_id, reason, amount, status)
+SELECT @refund_order_id, @buyer_id, '演示退款申请，商家后台可审核', 159.00, 'REQUESTED'
+WHERE NOT EXISTS (SELECT 1 FROM refunds WHERE order_id = @refund_order_id);
+
+INSERT INTO orders(order_no, buyer_user_id, shop_id, address_id, status, total_amount, pay_method, completed_at)
+SELECT 'DEMO-COMPLETED-0001', @buyer_id, @shop_id, @address_id, 'COMPLETED', 59.00, 'MOCK', NOW()
+WHERE NOT EXISTS (SELECT 1 FROM orders WHERE order_no = 'DEMO-COMPLETED-0001');
+SET @completed_order_id = (SELECT id FROM orders WHERE order_no = 'DEMO-COMPLETED-0001');
+
+INSERT INTO order_items(order_id, product_id, product_name, price, quantity, subtotal)
+SELECT @completed_order_id, @p4, '精品挂耳咖啡', 59.00, 1, 59.00
+WHERE NOT EXISTS (SELECT 1 FROM order_items WHERE order_id = @completed_order_id AND product_id = @p4);
+SET @review_order_item_id = (
+  SELECT id FROM order_items
+  WHERE order_id = @completed_order_id AND product_id = @p4
+  LIMIT 1
+);
+
+INSERT INTO payments(order_id, pay_method, amount, status, paid_at)
+SELECT @completed_order_id, 'MOCK', 59.00, 'SUCCESS', NOW()
+WHERE NOT EXISTS (SELECT 1 FROM payments WHERE order_id = @completed_order_id);
+
+INSERT INTO reviews(user_id, product_id, order_item_id, rating, content, status)
+SELECT @buyer_id, @p4, @review_order_item_id, 5, '挂耳咖啡口味稳定，评价数据来自 MySQL。', 'VISIBLE'
+WHERE NOT EXISTS (SELECT 1 FROM reviews WHERE order_item_id = @review_order_item_id);

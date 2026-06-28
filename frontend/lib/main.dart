@@ -9,10 +9,13 @@ import 'pages/auth/login_page.dart';
 import 'pages/buyer/home_page.dart';
 import 'pages/merchant/merchant_dashboard_page.dart';
 import 'provider/admin_provider.dart';
+import 'provider/address_provider.dart';
 import 'provider/auth_provider.dart';
 import 'provider/cart_provider.dart';
 import 'provider/catalog_provider.dart';
+import 'provider/merchant_provider.dart';
 import 'provider/order_provider.dart';
+import 'provider/review_provider.dart';
 import 'routes/app_routes.dart';
 
 void main() {
@@ -36,8 +39,11 @@ class MarketKyShopApp extends StatelessWidget {
           create: (_) => CatalogProvider(apiClient)..load(),
         ),
         ChangeNotifierProvider(create: (_) => CartProvider(apiClient)),
+        ChangeNotifierProvider(create: (_) => AddressProvider(apiClient)),
         ChangeNotifierProvider(create: (_) => OrderProvider(apiClient)),
+        ChangeNotifierProvider(create: (_) => MerchantProvider(apiClient)),
         ChangeNotifierProvider(create: (_) => AdminProvider(apiClient)),
+        ChangeNotifierProvider(create: (_) => ReviewProvider(apiClient)),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

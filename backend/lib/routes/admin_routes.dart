@@ -16,6 +16,7 @@ class AdminRoutes {
     ..put('/users/<id|[0-9]+>/status', _updateUserStatus)
     ..get('/merchant-applications', _merchantApplications)
     ..put('/merchant-applications/<id|[0-9]+>/audit', _auditMerchant)
+    ..get('/categories', _categories)
     ..post('/categories', _createCategory)
     ..put('/categories/<id|[0-9]+>', _updateCategory);
 
@@ -54,11 +55,17 @@ class AdminRoutes {
   Future<Response> _updateUserStatus(Request request, String id) async {
     final body = await readJsonObject(request);
     final status = body['status']?.toString() ?? 'DISABLED';
+    if (!{'ACTIVE', 'DISABLED'}.contains(status)) {
+      return jsonResponse({'message': 'Invalid user status'}, statusCode: 400);
+    }
     return _database.withConnection((connection) async {
-      await connection.query('UPDATE users SET status = ? WHERE id = ?', [
-        status,
-        int.parse(id),
-      ]);
+      final result = await connection.query(
+        'UPDATE users SET status = ? WHERE id = ?',
+        [status, int.parse(id)],
+      );
+      if (result.affectedRows == 0) {
+        return jsonResponse({'message': 'User not found'}, statusCode: 404);
+      }
       return jsonResponse({'message': 'User status updated'});
     });
   }
@@ -127,27 +134,59 @@ class AdminRoutes {
 
   Future<Response> _createCategory(Request request) async {
     final body = await readJsonObject(request);
+    final name = body['name']?.toString().trim() ?? '';
+    final status = body['status']?.toString() ?? 'ENABLED';
+    if (name.isEmpty || !{'ENABLED', 'DISABLED'}.contains(status)) {
+      return jsonResponse({
+        'message': 'Valid category name and status are required',
+      }, statusCode: 400);
+    }
     return _database.withConnection((connection) async {
       final result = await connection.query(
-        'INSERT INTO categories(parent_id, name, sort_order, status) VALUES (?, ?, ?, "ENABLED")',
-        [body['parentId'], body['name'], body['sortOrder'] ?? 0],
+        'INSERT INTO categories(parent_id, name, sort_order, status) VALUES (?, ?, ?, ?)',
+        [body['parentId'], name, body['sortOrder'] ?? 0, status],
       );
       return jsonResponse({'id': result.insertId}, statusCode: 201);
     });
   }
 
+  Future<Response> _categories(Request request) {
+    return _database.withConnection((connection) async {
+      final results = await connection.query(
+        'SELECT id, parent_id, name, sort_order, status FROM categories ORDER BY sort_order, id',
+      );
+      return jsonResponse(
+        results.map((row) {
+          final data = row.fields;
+          return {
+            'id': data['id'],
+            'parentId': data['parent_id'],
+            'name': data['name'],
+            'sortOrder': data['sort_order'],
+            'status': data['status'],
+          };
+        }).toList(),
+      );
+    });
+  }
+
   Future<Response> _updateCategory(Request request, String id) async {
     final body = await readJsonObject(request);
+    final name = body['name']?.toString().trim() ?? '';
+    final status = body['status']?.toString() ?? 'ENABLED';
+    if (name.isEmpty || !{'ENABLED', 'DISABLED'}.contains(status)) {
+      return jsonResponse({
+        'message': 'Valid category name and status are required',
+      }, statusCode: 400);
+    }
     return _database.withConnection((connection) async {
-      await connection.query(
+      final result = await connection.query(
         'UPDATE categories SET name = ?, sort_order = ?, status = ? WHERE id = ?',
-        [
-          body['name'],
-          body['sortOrder'] ?? 0,
-          body['status'] ?? 'ENABLED',
-          int.parse(id),
-        ],
+        [name, body['sortOrder'] ?? 0, status, int.parse(id)],
       );
+      if (result.affectedRows == 0) {
+        return jsonResponse({'message': 'Category not found'}, statusCode: 404);
+      }
       return jsonResponse({'message': 'Category updated'});
     });
   }

@@ -15,7 +15,7 @@ class OrderProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      final data = await _apiClient.get('/orders') as List<dynamic>;
+      final data = await _apiClient.get('/orders/') as List<dynamic>;
       orders
         ..clear()
         ..addAll(
@@ -31,22 +31,49 @@ class OrderProvider extends ChangeNotifier {
 
   Future<ShopOrder> createOrder({
     required List<CartItem> items,
-    required int addressId,
+    int? addressId,
     required String payMethod,
   }) async {
-    final payload = {
-      'addressId': addressId,
+    final payload = <String, Object?>{
       'payMethod': payMethod,
       'items': [
         for (final item in items)
           {'productId': item.product.id, 'quantity': item.quantity},
       ],
     };
+    if (addressId != null) {
+      payload['addressId'] = addressId;
+    }
     final data =
-        await _apiClient.post('/orders', body: payload) as Map<String, dynamic>;
+        await _apiClient.post('/orders/', body: payload)
+            as Map<String, dynamic>;
     final order = ShopOrder.fromJson(data);
     orders.insert(0, order);
     notifyListeners();
     return order;
+  }
+
+  Future<void> requestRefund(ShopOrder order, String reason) async {
+    await _apiClient.post(
+      '/orders/${order.id}/refunds',
+      body: {'reason': reason},
+    );
+    await load();
+  }
+
+  Future<void> submitReview({
+    required ShopOrderItem item,
+    required int rating,
+    required String content,
+  }) async {
+    await _apiClient.post(
+      '/reviews/',
+      body: {
+        'productId': item.productId,
+        'orderItemId': item.id,
+        'rating': rating,
+        'content': content,
+      },
+    );
   }
 }

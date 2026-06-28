@@ -14,6 +14,7 @@ class CartRoutes {
   Router get router => Router()
     ..get('/', _list)
     ..post('/items', _addItem)
+    ..delete('/items', _clear)
     ..put('/items/<productId|[0-9]+>', _updateItem)
     ..delete('/items/<productId|[0-9]+>', _deleteItem);
 
@@ -110,6 +111,17 @@ class CartRoutes {
         [cartId, int.parse(productId)],
       );
       return jsonResponse({'message': 'Cart item deleted'});
+    });
+  }
+
+  Future<Response> _clear(Request request) async {
+    final user = authUser(request);
+    return _database.withConnection((connection) async {
+      final cartId = await _cartId(connection, user.id);
+      await connection.query('DELETE FROM cart_items WHERE cart_id = ?', [
+        cartId,
+      ]);
+      return jsonResponse({'message': 'Cart cleared'});
     });
   }
 

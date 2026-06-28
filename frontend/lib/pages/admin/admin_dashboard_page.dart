@@ -56,7 +56,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             _OverviewTab(stats: admin.stats),
             _UsersTab(users: admin.users),
             _MerchantAuditTab(applications: admin.merchantApplications),
-            const _CategoryRoleTab(),
+            _CategoryRoleTab(categories: admin.categories),
           ],
         ),
       ),
@@ -135,16 +135,29 @@ class _UsersTab extends StatelessWidget {
                       DataCell(Text('${user['status']}')),
                       DataCell(
                         IconButton(
-                          tooltip: '禁用/启用',
-                          onPressed: () =>
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    '调用 PUT /admin/users/{id}/status',
+                          tooltip: user['status'] == 'ACTIVE' ? '禁用' : '启用',
+                          onPressed: () {
+                            final nextStatus = user['status'] == 'ACTIVE'
+                                ? 'DISABLED'
+                                : 'ACTIVE';
+                            _runAdminAction(
+                              context,
+                              () => context
+                                  .read<AdminProvider>()
+                                  .updateUserStatus(
+                                    int.parse(user['id'].toString()),
+                                    nextStatus,
                                   ),
-                                ),
-                              ),
-                          icon: const Icon(Icons.block_outlined),
+                              success: nextStatus == 'ACTIVE'
+                                  ? '用户已启用'
+                                  : '用户已禁用',
+                            );
+                          },
+                          icon: Icon(
+                            user['status'] == 'ACTIVE'
+                                ? Icons.block_outlined
+                                : Icons.check_circle_outline,
+                          ),
                         ),
                       ),
                     ],
@@ -185,13 +198,23 @@ class _MerchantAuditTab extends StatelessWidget {
                     spacing: 8,
                     children: [
                       FilledButton.tonal(
-                        onPressed: () =>
-                            _audit(context, application['id'] as int, true),
+                        onPressed: application['status'] == 'PENDING'
+                            ? () => _audit(
+                                context,
+                                int.parse(application['id'].toString()),
+                                true,
+                              )
+                            : null,
                         child: const Text('通过'),
                       ),
                       FilledButton.tonal(
-                        onPressed: () =>
-                            _audit(context, application['id'] as int, false),
+                        onPressed: application['status'] == 'PENDING'
+                            ? () => _audit(
+                                context,
+                                int.parse(application['id'].toString()),
+                                false,
+                              )
+                            : null,
                         child: const Text('驳回'),
                       ),
                     ],
@@ -217,31 +240,97 @@ class _MerchantAuditTab extends StatelessWidget {
 }
 
 class _CategoryRoleTab extends StatelessWidget {
-  const _CategoryRoleTab();
+  const _CategoryRoleTab({required this.categories});
+
+  final List<Map<String, dynamic>> categories;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(20),
-      children: const [
+      children: [
         SectionCard(
           title: '商品分类管理',
-          child: Column(
-            children: [
-              ListTile(
-                leading: Icon(Icons.category_outlined),
-                title: Text('数码'),
-                subtitle: Text('允许商家维护电子类商品'),
-              ),
-              ListTile(
-                leading: Icon(Icons.category_outlined),
-                title: Text('家居'),
-                subtitle: Text('可编辑名称、排序、启停状态'),
-              ),
-            ],
+          trailing: FilledButton.icon(
+            onPressed: () => _showCategoryDialog(context),
+            icon: const Icon(Icons.add),
+            label: const Text('新增分类'),
           ),
+          child: categories.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: Text('暂无分类')),
+                )
+              : Column(
+                  children: [
+                    for (final category in categories)
+                      ListTile(
+                        leading: const Icon(Icons.category_outlined),
+                        title: Text(category['name']?.toString() ?? ''),
+                        subtitle: Text(
+                          '排序 ${category['sortOrder'] ?? category['sort_order'] ?? 0} · ${_categoryStatusText(category['status']?.toString() ?? '')}',
+                        ),
+                        trailing: Wrap(
+                          spacing: 8,
+                          children: [
+                            IconButton(
+                              tooltip: '编辑',
+                              onPressed: () => _showCategoryDialog(
+                                context,
+                                category: category,
+                              ),
+                              icon: const Icon(Icons.edit_outlined),
+                            ),
+                            IconButton(
+                              tooltip: category['status'] == 'ENABLED'
+                                  ? '禁用'
+                                  : '启用',
+                              onPressed: () {
+                                final nextStatus =
+                                    category['status'] == 'ENABLED'
+                                    ? 'DISABLED'
+                                    : 'ENABLED';
+                                _runAdminAction(
+                                  context,
+                                  () => context
+                                      .read<AdminProvider>()
+                                      .saveCategory(
+                                        id: int.parse(
+                                          category['id'].toString(),
+                                        ),
+                                        parentId: _optionalInt(
+                                          category['parentId'],
+                                        ),
+                                        name:
+                                            category['name']?.toString() ?? '',
+                                        sortOrder:
+                                            int.tryParse(
+                                              (category['sortOrder'] ??
+                                                      category['sort_order'] ??
+                                                      0)
+                                                  .toString(),
+                                            ) ??
+                                            0,
+                                        status: nextStatus,
+                                      ),
+                                  success: nextStatus == 'ENABLED'
+                                      ? '分类已启用'
+                                      : '分类已禁用',
+                                );
+                              },
+                              icon: Icon(
+                                category['status'] == 'ENABLED'
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
         ),
-        SectionCard(
+        const SectionCard(
           title: '系统权限控制',
           child: Column(
             children: [
@@ -265,5 +354,112 @@ class _CategoryRoleTab extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _showCategoryDialog(
+    BuildContext context, {
+    Map<String, dynamic>? category,
+  }) async {
+    final nameController = TextEditingController(
+      text: category?['name']?.toString() ?? '',
+    );
+    final sortController = TextEditingController(
+      text: (category?['sortOrder'] ?? category?['sort_order'] ?? 0).toString(),
+    );
+    var status = category?['status']?.toString() ?? 'ENABLED';
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(category == null ? '新增分类' : '编辑分类'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: '分类名称'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: sortController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: '排序值'),
+                ),
+                const SizedBox(height: 12),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'ENABLED', label: Text('启用')),
+                    ButtonSegment(value: 'DISABLED', label: Text('禁用')),
+                  ],
+                  selected: {status},
+                  onSelectionChanged: (value) =>
+                      setState(() => status = value.first),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+    final name = nameController.text.trim();
+    final sortOrder = int.tryParse(sortController.text) ?? 0;
+    nameController.dispose();
+    sortController.dispose();
+    if (saved != true || name.isEmpty || !context.mounted) return;
+    await _runAdminAction(
+      context,
+      () => context.read<AdminProvider>().saveCategory(
+        id: category == null ? null : int.parse(category['id'].toString()),
+        parentId: _optionalInt(category?['parentId']),
+        name: name,
+        sortOrder: sortOrder,
+        status: status,
+      ),
+      success: category == null ? '分类已新增' : '分类已保存',
+    );
+  }
+}
+
+int? _optionalInt(Object? value) {
+  if (value == null) return null;
+  return int.tryParse(value.toString());
+}
+
+String _categoryStatusText(String status) {
+  return switch (status) {
+    'ENABLED' => '已启用',
+    'DISABLED' => '已禁用',
+    _ => status,
+  };
+}
+
+Future<void> _runAdminAction(
+  BuildContext context,
+  Future<void> Function() action, {
+  required String success,
+}) async {
+  try {
+    await action();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(success)));
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error.toString())));
   }
 }

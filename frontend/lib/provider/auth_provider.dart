@@ -46,13 +46,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> useDemoRole(String role) async {
-    final demo = AppUser(
-      id: -1,
-      name: _roleName(role),
-      email: 'demo@marketky.local',
-      roles: [role],
-    );
-    await _saveSession('demo-token-$role', demo);
+    final email = switch (role) {
+      AppRoles.admin => 'admin@marketky.local',
+      AppRoles.merchant => 'merchant@marketky.local',
+      _ => 'buyer@marketky.local',
+    };
+    await login(email, 'Password@123');
   }
 
   Future<void> _authenticate(String path, Map<String, String> body) async {
@@ -95,13 +94,5 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove('auth_token');
     await prefs.remove('auth_user');
     notifyListeners();
-  }
-
-  String _roleName(String role) {
-    return switch (role) {
-      AppRoles.admin => '超级管理员演示账号',
-      AppRoles.merchant => '商家管理员演示账号',
-      _ => '普通买家演示账号',
-    };
   }
 }
