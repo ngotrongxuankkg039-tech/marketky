@@ -81,10 +81,15 @@ class OrderRoutes {
       num total = 0;
       int? shopId;
       final lockedItems = <Map<String, dynamic>>[];
-      final addressId =
-          requestedAddressId ?? await _defaultAddressId(connection, user.id);
+      final addressId = await _resolveAddressId(
+        connection,
+        user.id,
+        requestedAddressId,
+      );
       if (addressId == null) {
-        return jsonResponse({'message': '请先添加收货地址'}, statusCode: 400);
+        return jsonResponse({
+          'message': requestedAddressId == null ? '请先添加收货地址' : '收货地址无效',
+        }, statusCode: 400);
       }
 
       for (final item in items) {
@@ -250,11 +255,20 @@ class OrderRoutes {
     });
   }
 
-  Future<int?> _defaultAddressId(dynamic connection, int userId) async {
-    final results = await connection.query(
-      'SELECT id FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC LIMIT 1',
-      [userId],
-    );
+  Future<int?> _resolveAddressId(
+    dynamic connection,
+    int userId,
+    int? requestedAddressId,
+  ) async {
+    final results = requestedAddressId == null
+        ? await connection.query(
+            'SELECT id FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC LIMIT 1',
+            [userId],
+          )
+        : await connection.query(
+            'SELECT id FROM addresses WHERE id = ? AND user_id = ? LIMIT 1',
+            [requestedAddressId, userId],
+          );
     if (results.isEmpty) return null;
     return results.first.fields['id'] as int;
   }

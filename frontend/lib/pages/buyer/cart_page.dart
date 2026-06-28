@@ -15,6 +15,8 @@ class CartPage extends StatefulWidget {
 }
 
 class _CartPageState extends State<CartPage> {
+  bool _isCheckingOut = false;
+
   @override
   void initState() {
     super.initState();
@@ -100,9 +102,11 @@ class _CartPageState extends State<CartPage> {
                         ),
                         const SizedBox(width: 16),
                         FilledButton.icon(
-                          onPressed: () => _checkout(context),
+                          onPressed: _isCheckingOut
+                              ? null
+                              : () => _checkout(context),
                           icon: const Icon(Icons.payments_outlined),
-                          label: const Text('模拟支付下单'),
+                          label: Text(_isCheckingOut ? '提交中' : '模拟支付下单'),
                         ),
                       ],
                     ),
@@ -115,12 +119,14 @@ class _CartPageState extends State<CartPage> {
 
   Future<void> _checkout(BuildContext context) async {
     final cart = context.read<CartProvider>();
+    if (cart.items.isEmpty || _isCheckingOut) return;
+    setState(() => _isCheckingOut = true);
     try {
       await context.read<OrderProvider>().createOrder(
         items: List.of(cart.items),
         payMethod: 'MOCK',
       );
-      await cart.clear();
+      cart.clearLocal();
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -136,6 +142,10 @@ class _CartPageState extends State<CartPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingOut = false);
+      }
     }
   }
 }

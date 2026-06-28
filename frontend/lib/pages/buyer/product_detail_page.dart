@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../common/api_client.dart';
 import '../../model/product.dart';
+import '../../provider/auth_provider.dart';
 import '../../provider/cart_provider.dart';
 import '../../provider/review_provider.dart';
 import '../../widgets/price_text.dart';
@@ -77,11 +79,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             onPressed: product.stock <= 0
                 ? null
                 : () async {
-                    await context.read<CartProvider>().add(product);
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('已加入购物车')));
+                    try {
+                      await context.read<CartProvider>().add(product);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(const SnackBar(content: Text('已加入购物车')));
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      if (error is ApiException && error.statusCode == 401) {
+                        await context.read<AuthProvider>().logout();
+                        if (!context.mounted) return;
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
+                      }
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(error.toString())));
+                    }
                   },
             icon: const Icon(Icons.add_shopping_cart),
             label: const Text('加入购物车'),

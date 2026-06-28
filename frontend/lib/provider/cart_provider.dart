@@ -32,6 +32,7 @@ class CartProvider extends ChangeNotifier {
   }
 
   Future<void> add(Product product) async {
+    final previousItems = List<CartItem>.of(items);
     final index = items.indexWhere((item) => item.product.id == product.id);
     if (index == -1) {
       items.add(CartItem(product: product, quantity: 1));
@@ -45,33 +46,54 @@ class CartProvider extends ChangeNotifier {
         body: {'productId': product.id, 'quantity': 1},
       );
     } catch (_) {
-      // Keep local state so the Web UI remains demonstrable during classroom review.
+      items
+        ..clear()
+        ..addAll(previousItems);
+      notifyListeners();
+      rethrow;
     }
   }
 
   Future<void> changeQuantity(Product product, int quantity) async {
+    final previousItems = List<CartItem>.of(items);
     final index = items.indexWhere((item) => item.product.id == product.id);
     if (index == -1) return;
     if (quantity <= 0) {
       items.removeAt(index);
-      await _apiClient.delete('/cart/items/${product.id}');
     } else {
       items[index] = items[index].copyWith(quantity: quantity);
-      await _apiClient.put(
-        '/cart/items/${product.id}',
-        body: {'quantity': quantity},
-      );
     }
     notifyListeners();
+    try {
+      if (quantity <= 0) {
+        await _apiClient.delete('/cart/items/${product.id}');
+      } else {
+        await _apiClient.put(
+          '/cart/items/${product.id}',
+          body: {'quantity': quantity},
+        );
+      }
+      notifyListeners();
+    } catch (_) {
+      items
+        ..clear()
+        ..addAll(previousItems);
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> clear() async {
-    items.clear();
-    notifyListeners();
+    clearLocal();
     try {
       await _apiClient.delete('/cart/items');
     } catch (_) {
       // Local state is already cleared after a successful checkout.
     }
+  }
+
+  void clearLocal() {
+    items.clear();
+    notifyListeners();
   }
 }
