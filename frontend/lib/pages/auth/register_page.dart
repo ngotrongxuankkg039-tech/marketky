@@ -97,9 +97,11 @@ class _RegisterPageState extends State<RegisterPage> {
       Navigator.of(context).pop();
     } catch (_) {
       if (!context.mounted) return;
+      final message =
+          context.read<AuthProvider>().errorMessage ?? '注册失败，请检查后端服务';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('注册失败，请检查后端服务')));
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 }

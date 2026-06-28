@@ -10,6 +10,13 @@
    mysql -u root -p < database\schema.sql
    ```
 
+   如果需要可直接演示的账号、店铺和商品数据，再执行：
+
+   ```powershell
+   mysql -u root -p marketky_shop
+   source C:/Users/xuyug/Documents/DataBase/database/demo_seed.sql;
+   ```
+
 2. 启动后端：
 
    ```powershell
@@ -33,6 +40,14 @@
 - 后端：`http://localhost:8080`
 - 前端 API：`http://localhost:8080/api`
 - Flutter Web 通过 `--dart-define=API_BASE_URL=http://localhost:8080/api` 注入后端地址。
+
+## 演示账号
+
+执行 `database/demo_seed.sql` 后可使用以下账号登录，密码统一为 `Password@123`。
+
+- 买家：`buyer@marketky.local`
+- 商家管理员：`merchant@marketky.local`
+- 超级管理员：`admin@marketky.local`
 
 ## 课程设计关注点
 
