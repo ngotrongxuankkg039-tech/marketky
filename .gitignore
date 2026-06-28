@@ -13,6 +13,7 @@ marketky_source/
 **/build/
 **/coverage/
 **/devtools_options.yaml
+.runtime/
 
 # Editor and OS noise.
 .idea/

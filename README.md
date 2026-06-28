@@ -4,6 +4,31 @@
 
 ## 快速运行
 
+推荐直接使用一键服务器脚本。它会构建 Flutter Web、启动 Dart 后端、启动前端静态资源服务器，并自动打开浏览器：
+
+```powershell
+cd C:\Users\xuyug\Documents\DataBase
+.\scripts\serve_all.ps1
+```
+
+默认访问地址：
+
+```text
+http://localhost:9000
+```
+
+停止本脚本启动的本地服务器：
+
+```powershell
+.\scripts\stop_servers.ps1
+```
+
+如果前端已构建过，只想快速启动服务器：
+
+```powershell
+.\scripts\serve_all.ps1 -SkipBuild
+```
+
 1. 初始化数据库：
 
    ```powershell
@@ -34,6 +59,8 @@
    ```powershell
    .\scripts\build_web.ps1
    ```
+
+打包后的 Web 不要双击 `index.html`，应通过 `serve_all.ps1`、Nginx、Python `http.server` 等静态服务器访问。
 
 ## 默认接口
 
