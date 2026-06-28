@@ -72,12 +72,13 @@ class ApiClient {
 
     final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (response.statusCode == 401) {
+        await onUnauthorized?.call();
+        throw ApiException('登录已过期，请重新登录', statusCode: response.statusCode);
+      }
       final message = decoded is Map<String, dynamic>
           ? decoded['message']?.toString() ?? 'Request failed'
           : 'Request failed';
-      if (response.statusCode == 401) {
-        await onUnauthorized?.call();
-      }
       throw ApiException(message, statusCode: response.statusCode);
     }
     return decoded;

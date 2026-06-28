@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../common/api_client.dart';
+import '../../provider/auth_provider.dart';
 import '../../provider/cart_provider.dart';
 import '../../provider/order_provider.dart';
 import '../../widgets/price_text.dart';
@@ -126,6 +128,11 @@ class _CartPageState extends State<CartPage> {
       Navigator.of(context).pop();
     } catch (error) {
       if (!context.mounted) return;
+      if (error is ApiException && error.statusCode == 401) {
+        await context.read<AuthProvider>().logout();
+        if (!context.mounted) return;
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
