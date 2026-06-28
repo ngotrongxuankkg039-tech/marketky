@@ -1,0 +1,116 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../provider/cart_provider.dart';
+import '../../provider/order_provider.dart';
+import '../../widgets/price_text.dart';
+
+class CartPage extends StatelessWidget {
+  const CartPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final cart = context.watch<CartProvider>();
+    return Scaffold(
+      appBar: AppBar(title: const Text('购物车')),
+      body: cart.items.isEmpty
+          ? const Center(child: Text('购物车为空'))
+          : ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                for (final item in cart.items)
+                  Card(
+                    child: ListTile(
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          item.product.imageUrl,
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.shopping_bag_outlined),
+                        ),
+                      ),
+                      title: Text(item.product.name),
+                      subtitle: PriceText(item.subtotal),
+                      trailing: SizedBox(
+                        width: 132,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              tooltip: '减少',
+                              onPressed: () => cart.changeQuantity(
+                                item.product,
+                                item.quantity - 1,
+                              ),
+                              icon: const Icon(Icons.remove_circle_outline),
+                            ),
+                            Text(item.quantity.toString()),
+                            IconButton(
+                              tooltip: '增加',
+                              onPressed: () => cart.changeQuantity(
+                                item.product,
+                                item.quantity + 1,
+                              ),
+                              icon: const Icon(Icons.add_circle_outline),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Text(
+                          '合计',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const Spacer(),
+                        PriceText(
+                          cart.totalAmount,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(width: 16),
+                        FilledButton.icon(
+                          onPressed: () => _checkout(context),
+                          icon: const Icon(Icons.payments_outlined),
+                          label: const Text('模拟支付下单'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Future<void> _checkout(BuildContext context) async {
+    final cart = context.read<CartProvider>();
+    try {
+      await context.read<OrderProvider>().createOrder(
+        items: List.of(cart.items),
+        addressId: 1,
+        payMethod: 'MOCK',
+      );
+      cart.clear();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('订单创建成功，库存已由后端事务扣减')));
+      Navigator.of(context).pop();
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('下单失败，请启动后端或检查库存')));
+    }
+  }
+}

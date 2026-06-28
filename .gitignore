@@ -1,0 +1,22 @@
+# Local reference copy of the upstream MarketKy template.
+marketky_source/
+
+# Local environment files.
+.env
+*.local
+
+# Dart and Flutter generated files.
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/build/
+**/coverage/
+
+# Editor and OS noise.
+.idea/
+.vscode/
+*.iml
+*.log
+.DS_Store
+Thumbs.db
