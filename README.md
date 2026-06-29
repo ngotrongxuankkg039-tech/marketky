@@ -4,6 +4,10 @@
 
 ## 快速运行
 
+Windows 下最简单的方式：直接双击根目录的 `start_marketky.bat`，它会启动 Dart 后端、启动 Flutter Web 静态资源服务器，并自动打开浏览器。
+
+停止服务：双击根目录的 `stop_marketky.bat`。
+
 推荐直接使用一键服务器脚本。它会构建 Flutter Web、启动 Dart 后端、启动前端静态资源服务器，并自动打开浏览器：
 
 ```powershell
@@ -60,7 +64,7 @@ http://localhost:9000
    .\scripts\build_web.ps1
    ```
 
-打包后的 Web 不要双击 `index.html`，应通过 `serve_all.ps1`、Nginx、Python `http.server` 等静态服务器访问。
+打包后的 Web 不要双击 `index.html`。Flutter Web 需要通过 HTTP 加载 JavaScript、字体、图片和 WASM 等资源，浏览器用 `file://` 打开会拦截部分资源。请使用 `start_marketky.bat`、`serve_all.ps1`、Nginx、Python `http.server` 等静态服务器访问。
 
 ## 默认接口
 

@@ -120,7 +120,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         onPressed: auth.isLoading
                             ? null
                             : () => _register(context),
-                        child: Text(_isMerchant ? '提交入驻申请并登录' : '注册并登录'),
+                        child: Text(_isMerchant ? '提交入驻申请' : '注册并登录'),
                       ),
                     ),
                     if (_isMerchant) ...[
@@ -153,6 +153,23 @@ class _RegisterPageState extends State<RegisterPage> {
           description: _descriptionController.text.trim(),
           licenseNo: _licenseNoController.text.trim(),
         );
+        if (!context.mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('你的申请已提交'),
+            content: const Text('请等待超级管理员审核，通过后再登录即可进入商家后台。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('回到登录'),
+              ),
+            ],
+          ),
+        );
+        if (!context.mounted) return;
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        return;
       } else {
         await context.read<AuthProvider>().register(
           _nameController.text.trim(),

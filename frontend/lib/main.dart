@@ -18,23 +18,29 @@ import 'provider/order_provider.dart';
 import 'provider/review_provider.dart';
 import 'routes/app_routes.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   final apiClient = ApiClient(AppConstants.apiBaseUrl);
-  runApp(MarketKyShopApp(apiClient: apiClient));
+  final authProvider = AuthProvider(apiClient);
+  await authProvider.restore();
+  runApp(MarketKyShopApp(apiClient: apiClient, authProvider: authProvider));
 }
 
 class MarketKyShopApp extends StatelessWidget {
-  const MarketKyShopApp({super.key, required this.apiClient});
+  const MarketKyShopApp({
+    super.key,
+    required this.apiClient,
+    required this.authProvider,
+  });
 
   final ApiClient apiClient;
+  final AuthProvider authProvider;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AuthProvider(apiClient)..restore(),
-        ),
+        ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider(
           create: (_) => CatalogProvider(apiClient)..load(),
         ),
@@ -62,9 +68,6 @@ class RoleGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    if (auth.isRestoring) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
     if (!auth.isAuthenticated) {
       return const LoginPage();
     }

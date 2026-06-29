@@ -15,7 +15,7 @@ class AuthService {
     required Iterable<String> roles,
   }) {
     final jwt = JWT({'sub': userId, 'email': email, 'roles': roles.toList()});
-    return jwt.sign(SecretKey(secret), expiresIn: const Duration(hours: 8));
+    return jwt.sign(SecretKey(secret), expiresIn: const Duration(hours: 24));
   }
 
   AuthUser verify(String token) {

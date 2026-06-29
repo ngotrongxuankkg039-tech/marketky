@@ -15,7 +15,7 @@ class AuthProvider extends ChangeNotifier {
   final ApiClient _apiClient;
   AppUser? user;
   String? token;
-  bool isRestoring = true;
+  bool isRestoring = false;
   bool isLoading = false;
   String? errorMessage;
 
@@ -55,14 +55,29 @@ class AuthProvider extends ChangeNotifier {
     required String description,
     required String licenseNo,
   }) async {
-    await _authenticate('/auth/merchant-register', {
-      'name': name,
-      'email': email,
-      'password': password,
-      'shopName': shopName,
-      'description': description,
-      'licenseNo': licenseNo,
-    });
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+    try {
+      await _apiClient.post(
+        '/auth/merchant-register',
+        body: {
+          'name': name,
+          'email': email,
+          'password': password,
+          'shopName': shopName,
+          'description': description,
+          'licenseNo': licenseNo,
+        },
+      );
+      await _clearSession();
+    } catch (error) {
+      errorMessage = error.toString();
+      rethrow;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> useDemoRole(String role) async {

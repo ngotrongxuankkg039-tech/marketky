@@ -107,7 +107,14 @@ class AuthRoutes {
         ''',
         [userId, shopName, description, licenseNo],
       );
-      return _sessionResponse(connection, userId);
+      return jsonResponse({
+        'message': '你的申请已提交，请等待超级管理员审核',
+        'application': {
+          'userId': userId,
+          'shopName': shopName,
+          'status': 'PENDING',
+        },
+      }, statusCode: 201);
     });
   }
 
@@ -131,8 +138,55 @@ class AuthRoutes {
           'message': 'Invalid email or password',
         }, statusCode: 401);
       }
+      final applicationBlock = await _merchantApplicationLoginBlock(
+        connection,
+        row['id'] as int,
+      );
+      if (applicationBlock != null) {
+        return applicationBlock;
+      }
       return _sessionResponse(connection, row['id'] as int);
     });
+  }
+
+  Future<Response?> _merchantApplicationLoginBlock(
+    DbConnection connection,
+    int userId,
+  ) async {
+    final applications = await connection.query(
+      '''
+      SELECT ma.status,
+             EXISTS(
+               SELECT 1
+               FROM user_roles ur
+               JOIN roles r ON r.id = ur.role_id
+               WHERE ur.user_id = ma.user_id AND r.code = "MERCHANT_ADMIN"
+             ) AS has_merchant_role
+      FROM merchant_applications ma
+      WHERE ma.user_id = ?
+      ORDER BY ma.id DESC
+      LIMIT 1
+      ''',
+      [userId],
+    );
+    if (applications.isEmpty) return null;
+
+    final application = applications.first.fields;
+    final hasMerchantRole =
+        application['has_merchant_role'].toString() == '1' ||
+        application['has_merchant_role'] == true;
+    if (hasMerchantRole) return null;
+
+    final status = application['status']?.toString() ?? '';
+    if (status == 'PENDING') {
+      return jsonResponse({
+        'message': '商家入驻申请审核中，请等待超级管理员审核通过后再登录',
+      }, statusCode: 403);
+    }
+    if (status == 'REJECTED') {
+      return jsonResponse({'message': '商家入驻申请未通过，请联系超级管理员处理'}, statusCode: 403);
+    }
+    return null;
   }
 
   Future<void> _grantRole(
