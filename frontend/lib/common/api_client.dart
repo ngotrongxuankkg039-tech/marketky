@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -18,6 +19,7 @@ class ApiClient {
 
   final String baseUrl;
   final http.Client _client;
+  static const _requestTimeout = Duration(seconds: 15);
   String? _token;
   Future<void> Function()? onUnauthorized;
 
@@ -62,13 +64,18 @@ class ApiClient {
     };
 
     final encodedBody = body == null ? null : jsonEncode(body);
-    final response = switch (method) {
-      'GET' => await _client.get(uri, headers: headers),
-      'POST' => await _client.post(uri, headers: headers, body: encodedBody),
-      'PUT' => await _client.put(uri, headers: headers, body: encodedBody),
-      'DELETE' => await _client.delete(uri, headers: headers),
-      _ => throw ApiException('Unsupported HTTP method: $method'),
-    };
+    final http.Response response;
+    try {
+      response = await switch (method) {
+        'GET' => _client.get(uri, headers: headers),
+        'POST' => _client.post(uri, headers: headers, body: encodedBody),
+        'PUT' => _client.put(uri, headers: headers, body: encodedBody),
+        'DELETE' => _client.delete(uri, headers: headers),
+        _ => throw ApiException('Unsupported HTTP method: $method'),
+      }.timeout(_requestTimeout);
+    } on TimeoutException {
+      throw ApiException('请求超时，请检查后端服务是否已启动');
+    }
 
     final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {

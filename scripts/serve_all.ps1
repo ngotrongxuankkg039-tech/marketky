@@ -32,6 +32,23 @@ function Test-PortListening {
   return [bool]$matches
 }
 
+function Get-ListeningProcessId {
+  param([int]$Port)
+  $connection = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($connection) { return $connection.OwningProcess }
+  return $null
+}
+
+function Test-ApiHealthy {
+  param([int]$Port)
+  try {
+    Invoke-RestMethod -Uri "http://localhost:$Port/health" -Method Get -TimeoutSec 3 | Out-Null
+    return $true
+  } catch {
+    return $false
+  }
+}
+
 $flutter = Get-CommandPath "flutter" "C:\Users\xuyug\Documents\flutter\bin\flutter.bat"
 $dart = Get-CommandPath "dart" "C:\Users\xuyug\Documents\flutter\bin\dart.bat"
 
@@ -54,6 +71,17 @@ if (-not $SkipBuild -or -not (Test-Path (Join-Path $webDir "index.html"))) {
     & $flutter build web --release --dart-define="API_BASE_URL=$apiBaseUrl"
   } finally {
     Pop-Location
+  }
+}
+
+if ((Test-PortListening $ApiPort) -and -not (Test-ApiHealthy $ApiPort)) {
+  $apiPid = Get-ListeningProcessId $ApiPort
+  $apiProcess = if ($apiPid) { Get-Process -Id $apiPid -ErrorAction SilentlyContinue } else { $null }
+  if ($apiProcess -and @("dart", "dartvm") -contains $apiProcess.ProcessName) {
+    Stop-Process -Id $apiPid -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+  } else {
+    throw "Port $ApiPort is occupied but the API is not responding. Stop that process or choose another -ApiPort."
   }
 }
 
